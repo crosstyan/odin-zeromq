@@ -105,12 +105,12 @@ foreign zeromq {
 
 setsockopt_int :: proc(s: ^Socket, option: i32, optval: i32) -> i32 {
 	local_val := optval
-	return setsockopt(s, option, cast(rawptr)&local_val, 4)
+	return setsockopt(s, option, &local_val, 4)
 }
 
 setsockopt_bool :: proc(s: ^Socket, option: i32, optval: bool) -> i32 {
 	local_val := cast(i32)optval
-	return setsockopt(s, option, cast(rawptr)&local_val, 4)
+	return setsockopt(s, option, &local_val, 4)
 }
 
 setsockopt_string :: proc(s: ^Socket, option: i32, optval: string) -> i32 {
@@ -121,17 +121,28 @@ setsockopt_bytes :: proc(s: ^Socket, option: i32, optval: []u8) -> i32 {
 	return setsockopt(s, option, raw_data(optval), cast(uint)len(optval))
 }
 
-recv_string :: proc(s: ^Socket) -> string {
+recv_string :: proc(s: ^Socket) -> (string, bool) {
 	msg := Message{}
-	msg_init(&msg)
+	rc := msg_init(&msg)
+	assert(rc == 0, "Failed to initialize message")
 	size := msg_recv(&msg, s, 0)
-	if size == -1 do return ""
+	if size == -1 do return "", false
 	str := make([]u8, size + 1)
 	mem.copy(&str[0], msg_data(&msg), cast(int)size)
 	msg_close(&msg)
 	str[size] = 0
 	ret := strings.string_from_ptr(mem.raw_data(str), len(str))
-	return ret
+	return ret, true
+}
+
+// initialize a message and receive it via a socket, casting the raw data to a byte slice
+recv_raw_msg_as_bytes :: proc(msg: ^Message, s: ^Socket) -> ([]u8, bool) {
+	rc := msg_init(msg)
+	assert(rc == 0, "Failed to initialize message")
+	size := msg_recv(msg, s, 0)
+	if size == -1 do return nil, false
+	raw := cast([^]u8)msg_data(msg)
+	return raw[:size], true
 }
 
 send_string :: proc(s: ^Socket, str: string) -> i32 {
@@ -166,6 +177,8 @@ Atomic_Counter :: struct {}
 Poller :: struct {}
 Timer :: struct {}
 
+// see `zmq_msg_t` in `zmq.h`
+// https://github.com/zeromq/libzmq/blob/34f7fa22022bed9e0e390ed3580a1c83ac4a2834/include/zmq.h#L214-L232
 Message :: struct {
 	data: [64]u8,
 }
@@ -202,6 +215,7 @@ THREAD_PRIORITY_DLFT :: -1
 THREAD_SCHED_POLICY_DFLT :: -1
 
 // Socket types
+// https://libzmq.readthedocs.io/en/zeromq3-x/zmq_socket.html
 PAIR :: 0
 PUB :: 1
 SUB :: 2
