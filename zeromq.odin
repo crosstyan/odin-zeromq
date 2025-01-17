@@ -121,7 +121,9 @@ setsockopt_bytes :: proc(s: ^Socket, option: i32, optval: []u8) -> i32 {
 	return setsockopt(s, option, raw_data(optval), cast(uint)len(optval))
 }
 
-recv_string :: proc(s: ^Socket) -> (string, bool) {
+// receive a message via a socket and return it as a string
+// use the context allocator to allocate the string, so the caller is responsible for freeing it.
+recv_msg_string_copy :: proc(s: ^Socket) -> (string, bool) {
 	msg := Message{}
 	rc := msg_init(&msg)
 	assert(rc == 0, "Failed to initialize message")
@@ -135,8 +137,9 @@ recv_string :: proc(s: ^Socket) -> (string, bool) {
 	return ret, true
 }
 
-// initialize a message and receive it via a socket, casting the raw data to a byte slice
-recv_raw_msg_as_bytes :: proc(msg: ^Message, s: ^Socket) -> ([]u8, bool) {
+// initialize a message and receive it via a socket, casting the raw data to a
+// byte slice. the caller should close the message after use
+recv_msg_bytes :: proc(msg: ^Message, s: ^Socket) -> ([]u8, bool) {
 	rc := msg_init(msg)
 	assert(rc == 0, "Failed to initialize message")
 	size := msg_recv(msg, s, 0)
