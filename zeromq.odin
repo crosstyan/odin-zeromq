@@ -200,6 +200,12 @@ Poll_Item :: struct {
 	revents: u16,
 }
 
+ZmqError :: struct {
+	code: int,
+	what: string,
+}
+
+
 // Context options
 IO_THREADS :: 1
 MAX_SOCKETS :: 2
