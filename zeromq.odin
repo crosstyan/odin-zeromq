@@ -126,7 +126,7 @@ setsockopt_bytes :: proc(s: ^Socket, option: i32, optval: []u8) -> i32 {
 recv_msg_string_copy :: proc(s: ^Socket) -> (string, bool) {
 	msg := Message{}
 	rc := msg_init(&msg)
-	assert(rc == 0, "Failed to initialize message")
+	if rc != 0 do return "", false
 	size := msg_recv(&msg, s, 0)
 	if size == -1 do return "", false
 	str := make([]u8, size + 1)
@@ -141,7 +141,7 @@ recv_msg_string_copy :: proc(s: ^Socket) -> (string, bool) {
 // byte slice. the caller should close the message after use
 recv_msg_bytes :: proc(msg: ^Message, s: ^Socket) -> ([]u8, bool) {
 	rc := msg_init(msg)
-	assert(rc == 0, "Failed to initialize message")
+	if rc != 0 do return nil, false
 	size := msg_recv(msg, s, 0)
 	if size == -1 do return nil, false
 	raw := cast([^]u8)msg_data(msg)
